@@ -1,85 +1,141 @@
-1. Register service and facade. 
-File: config/app.php
+Installation:
+-------------
+```
+> composer require crumby/meta-resolver:"dev-master"
+> php artisan vendor:publish --provider="Crumby\CanonicalHreflang\CanonicalHreflangServiceProvider" --tag=config
 
+
+Register service and facade:
+----------------------------
+File: config/app.php
+```
 'providers' => [
     ......................
-    'Crumby\MetaResolver\MetaResolverServiceProvider',
+    'Crumby\CanonicalHreflang\CanonicalHreflangServiceProvider',
     ........................
  ];
  
  'aliases' => [ 
     ......................
-    'MetaResolver' => 'Crumby\MetaResolver\Facades\MetaResolver',
+    'Canonicalhreflang' => 'Crumby\CanonicalHreflang\Facades\CanonicalHreflang',
     ......................
  ];
-      
-2. Map Schema.org type to resolver class in config/meta-resolver.php 
+```
+
+Create Resolver classes:
+------------------------
+To fill Schema.org JSON-LD  structure on your page you will need to create class which can extract data from current content.
+The class needs to implement interface Crumby\MetaResolver\Contracts\MetaResolver.php
+```
+<?php
+namespace App\Resolvers;
+use Crumby\MetaResolver\Contracts\MetaResolver as MetaResolver;
+
+class CreativeWorkResolver implements MetaResolver {
+    const IRI_FRAGMENT = '#creative';
+    protected $service;
+    public function __construct($service) {
+        $this->service = $service;
+    }
+    
+    public function type() {
+        return 'CreativeWork';
+    }
+    
+    public function hasPart() {
+        return [
+            "mainEntity" => [
+                "author" => "Person" , 
+                "publisher" => "Organization"
+                ], 
+            "breadcrumb" => "BreadcrumbList"
+            ];
+    }
+    
+    public function title() {
+        return $this->service->title();
+    }
+
+    public function description() {
+        return $this->service->description();
+    }
+    
+    public function publishedAt() {
+        return $this->service->content()->created_at->format('Y-m-d');
+    }
+    
+    public function modifiedAt() {
+        return $this->service->content()->updated_at->format('Y-m-d');
+    }
+    
+    public function image() {
+        return false;
+    }
+    
+    public function url() {
+        return $this->service->url();
+    }
+    
+    public function iri() {
+        return $this->url() . '/' . self::IRI_FRAGMENT;
+    }
+    
+    public function schema($includeContext = true) {
+        return [
+            "@context" => "http://schema.org",
+            "@type" => "WebPage",
+            "url" => $this->url(),
+            "isPartOf" => [
+                "@type" => "WebSite",
+                "@id" => \Request::root()
+             ],
+            "mainEntity" => [    
+                "@type" => $this->type(),
+                "@id" => $this->iri(),
+                "mainEntityOfPage" => [
+                    "@type" => "WebPage",
+                    "@id" => $this->url(),
+                ],
+                "url" => $this->url(),
+                "headline" => $this->title(),
+                "description" => $this->description(),
+                "dateCreated" => $this->publishedAt(),
+                "dateModified" => $this->modifiedAt(),
+            ],
+        ];
+    }
+}
+```
+   
+Configuration:
+--------------
+Map Schema.org type to resolver class:
+File config/meta-resolver.php 
+```
 return [
         .........................
         'ContactPoint' => 'App\Resolvers\ContactPointResolver',
+        'CreativeWork' => 'App\Resolvers\CreativeWorkResolver'
         ........................
 ];
+```
 
-3. Implement interface Crumby\MetaResolver\Contracts\MetaResolver.php
-in file, for example:
-app/Resolvers/ArticleResolver.php
-
-4.  Add resolver class in Controller class action. It will be resolved then method
- public function hasPart() {
-        return ["author" => "Person"];
+Example: 
+--------
+Main method is \MetaResolver::addMeta().
+ - add to your controller
+```
+    /**
+     * Show the application dashboard.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function article(ContentPackage $package, ContentItem $article) {
+        \MetaResolver::addMeta(new CreativeWorkResolver($article), $article);
+        $collection = new FrontPackages();
+        return view('pages.package', ['collection' => $collection]);
     }
-make call to hasPart() and will add to property "author" Schema.org type Person. Then resolver will use map and inject 
-'App\Resolvers\ContactPointResolver'
-
-5. make sure the App\Resolvers\ArticleResolver, App\Resolvers\ContactPointResolver .. classes are exist in autoloader
-    
-6. you may add breadcrumbs to json+ld structured data: 
-    Implement Resolver:
-    app/Resolvers/BreadcrumbListResolver.php
-
-        namespace App\Resolvers;
-        use Crumby\MetaResolver\Contracts\MetaResolver as MetaResolver;
-        class BreadcrumbListResolver implements MetaResolver {
-            protected $service;
-            public function __construct($service) {
-                $this->service = $service;
-            }
-            public function type() {
-                return 'BreadcrumbList';
-            }
-            public function hasPart() {
-                return false;
-            }
-            public function toArray() {
-                return \Breadcrumbs::toArray();
-            }
-        }    
-    Add the structured data property to parent Resolver ArticleResolver
-    app/Resolvers/ArticleResolver.php
-    class ArticleResolver implements MetaResolver {
-            ........................
-            public function hasPart() {
-                return ["author" => "Person", "breadcrumb" => "BreadcrumbList"];
-            }
-           ..................
-        }    
-    
-    
-7. use in you Blade template 
+```  
+ 
+ - use in you Blade template 
 {{ $MetaResolver }}
-
-8. API you need to implement in your resolver
-    /**
-     * returns array representing Shema.org types
-     */
-    public function schema();
-    
-    /**
-     * returns string representing page description. Be used in <meta name="description".
-     */
-    public function description();
-    
-    /**
-     * returns string representing page title. Be used in <title>
-     */
-    public function title();    
