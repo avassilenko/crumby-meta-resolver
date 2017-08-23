@@ -23,7 +23,7 @@ class MetaResolverServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__.'/config/crumby-crumbs/meta-resolver.php' => config_path('crumby-crumbs/meta-resolver.php')
+                __DIR__.'/config/meta-resolver.php' => config_path('crumby-crumbs/meta-resolver.php')
             ], 'config');
         }
         
