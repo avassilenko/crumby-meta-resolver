@@ -129,7 +129,7 @@ class MetaResolver {
         }
         if ($schema = $this->schema()) {
             $script .= '<script type="application/ld+json">';
-            $script .= json_encode($schema, JSON_UNESCAPED_SLASHES);
+            $script .= json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
             $script .= '</script>';
         }
         return $script;
