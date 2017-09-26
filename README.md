@@ -1,9 +1,9 @@
 Installation:
 -------------
 ```
-> composer require crumby/meta-resolver:"dev-master"
-> php artisan vendor:publish --provider="Crumby\CanonicalHreflang\CanonicalHreflangServiceProvider" --tag=config
-
+> composer require crumby/meta-resolver
+> php artisan vendor:publish --provider="Crumby\MetaResolver\MetaResolverServiceProvider" --tag=config
+```
 
 Register service and facade:
 ----------------------------
@@ -11,13 +11,13 @@ File: config/app.php
 ```
 'providers' => [
     ......................
-    'Crumby\CanonicalHreflang\CanonicalHreflangServiceProvider',
+    'Crumby\MetaResolver\MetaResolverServiceProvider',
     ........................
  ];
  
  'aliases' => [ 
     ......................
-    'Canonicalhreflang' => 'Crumby\CanonicalHreflang\Facades\CanonicalHreflang',
+    'MetaResolver' => 'Crumby\MetaResolver\Facades\MetaResolver',
     ......................
  ];
 ```
